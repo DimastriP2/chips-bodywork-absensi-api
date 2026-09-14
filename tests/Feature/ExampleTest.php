@@ -1,7 +1,5 @@
 <?php
 
-it('returns a successful response', function () {
-    $response = $this->get('/');
-
-    $response->assertStatus(200);
+test('landing page redirects visitors to login', function () {
+    $this->get('/')->assertRedirect(route('login'));
 });
