@@ -16,7 +16,10 @@ class AttendanceSeeder extends Seeder
             return;
         }
 
-        Attendance::create([
+        Attendance::firstOrCreate([
+            'user_id' => $user->id,
+            'date' => now()->toDateString(),
+        ], [
             'user_id' => $user->id,
             'date' => now()->toDateString(),
             'check_in_time' => '08:05:00',

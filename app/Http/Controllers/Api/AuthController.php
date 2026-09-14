@@ -3,78 +3,82 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
-    /**
-     * Login User
-     */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required'
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string'],
         ]);
 
-        if (!Auth::attempt([
-            'email' => $request->email,
-            'password' => $request->password
-        ])) {
+        return DB::transaction(function () use ($data) {
+            $user = User::where('email', $data['email'])->lockForUpdate()->first();
+
+            if (!$user || !Hash::check($data['password'], $user->password)) {
+                return response()->json(['message' => 'Login gagal'], 401);
+            }
+
+            // Preserve the existing single mobile session policy.
+            $user->tokens()->delete();
+            $token = $user->createToken('mobile-token')->plainTextToken;
 
             return response()->json([
-                'message' => 'Login gagal'
-            ], 401);
-        }
-
-        $user = Auth::user();
-
-        // Hapus token lama (opsional agar tidak menumpuk)
-        $user->tokens()->delete();
-
-        $token = $user->createToken('mobile-token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Login berhasil',
-            'token' => $token,
-            'user' => $user
-        ]);
+                'message' => 'Login berhasil',
+                'token' => $token,
+                'user' => $user,
+            ]);
+        }, 3);
     }
 
-    /**
-     * Ganti Password
-     */
+    public function logout(Request $request)
+    {
+        $token = $request->user()->currentAccessToken();
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        return response()->json(['message' => 'Logout berhasil']);
+    }
+
     public function changePassword(Request $request)
     {
-        $request->validate([
-            'old_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
+        $data = $request->validate([
+            'old_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user = Auth::user();
+        return DB::transaction(function () use ($request, $data) {
+            $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
 
-        // Cek password lama
-        if (!Hash::check($request->old_password, $user->password)) {
-            return response()->json([
-                'message' => 'Password lama salah.'
-            ], 422);
-        }
+            if (!Hash::check($data['old_password'], $user->password)) {
+                return response()->json(['message' => 'Password lama salah.'], 422);
+            }
 
-        // Jangan gunakan password yang sama
-        if (Hash::check($request->new_password, $user->password)) {
-            return response()->json([
-                'message' => 'Password baru tidak boleh sama dengan password lama.'
-            ], 422);
-        }
+            if (Hash::check($data['new_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'Password baru tidak boleh sama dengan password lama.',
+                ], 422);
+            }
 
-        // Simpan password baru
-        $user->password = Hash::make($request->new_password);
-        $user->save();
+            $user->password = Hash::make($data['new_password']);
+            $user->save();
 
-        return response()->json([
-            'message' => 'Password berhasil diubah.'
-        ], 200);
+            // Keep this device signed in; revoke other mobile sessions.
+            $current = $request->user()->currentAccessToken();
+            $tokens = $user->tokens();
+            if ($current instanceof PersonalAccessToken) {
+                $tokens->where('id', '!=', $current->getKey());
+            }
+            $tokens->delete();
+
+            return response()->json(['message' => 'Password berhasil diubah.']);
+        }, 3);
     }
 }

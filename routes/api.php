@@ -1,25 +1,21 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AttendanceApiController;
+use App\Http\Controllers\Api\AuthController;
+use Illuminate\Support\Facades\Route;
 
-// Login
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:mobile-login');
 
-Route::middleware('auth:sanctum')->group(function () {
-
-    // Absensi
+Route::middleware(['auth:sanctum', 'throttle:mobile-api'])->group(function () {
     Route::post('/checkin', [AttendanceApiController::class, 'checkIn']);
     Route::post('/checkout', [AttendanceApiController::class, 'checkOut']);
-
-    // Riwayat
     Route::get('/history', [AttendanceApiController::class, 'history']);
-
-    // Profil
     Route::get('/profile', [AttendanceApiController::class, 'profile']);
+    Route::post('/change-password', [AuthController::class, 'changePassword'])
+        ->middleware('throttle:5,1');
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Ganti Password
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
-
+    Route::get('/attendance/today', [AttendanceApiController::class, 'today']);
+    Route::get('/attendance/summary', [AttendanceApiController::class, 'summary']);
+    Route::get('/office', [AttendanceApiController::class, 'office']);
 });

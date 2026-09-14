@@ -1,59 +1,104 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Chips Bodywork — Attendance API & Admin
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem absensi berbasis lokasi dengan API untuk aplikasi mobile dan dashboard admin.
+Dikembangkan sebagai proyek portofolio Dimas Tri Pamungkas.
 
-## About Laravel
+**Stack:** PHP 8.2+ · Laravel 12 · Sanctum 4 · Blade · Bootstrap 5 · Pest.
+Workflow pengujian menggunakan PHP 8.3, Node 22, dan SQLite.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fitur
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Login token dengan kebijakan satu sesi mobile per akun, logout, dan ganti password.
+- Check in/check out dengan validasi koordinat dan radius kantor di server.
+- Satu absensi per karyawan per tanggal melalui transaksi, row lock, dan unique index.
+- Status hari ini, ringkasan bulanan, serta riwayat dengan filter dan pagination opsional.
+- Dashboard admin: jumlah karyawan, masuk/pulang, catatan terbaru, dan tren tujuh hari.
+- Pengelolaan karyawan dan lokasi kantor; rekap serta ekspor CSV/PDF yang sudah tersedia.
+- Data demo lokal, dokumentasi kontrak API, dan pengujian otomatis.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Menjalankan secara lokal
 
-## Learning Laravel
+Prasyarat: PHP beserta PDO SQLite, Composer, Node.js 22, dan npm.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```sh
+git clone https://github.com/DimastriP2/chips-bodywork-absensi-api.git
+cd chips-bodywork-absensi-api
+composer install
+cp .env.example .env
+php artisan key:generate
+php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
+php artisan migrate
+npm ci
+npm run build
+php artisan db:seed --class=DemoSeeder
+php artisan serve
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Buka `http://127.0.0.1:8000`. Seeder menampilkan password acak untuk
+`admin@example.test` dan tiga akun `staff1@example.test` sampai `staff3@example.test`.
+Password hanya ditampilkan saat akun dibuat. Menjalankan ulang seeder tidak mereset
+password atau menimpa absensi. Gunakan database lokal khusus demo.
 
-## Laravel Sponsors
+Waktu bisnis memakai `Asia/Jakarta` sesuai konfigurasi proyek yang sudah ada.
+Alamat API lokal: `http://127.0.0.1:8000/api`. Emulator Android biasanya mengakses host
+melalui `http://10.0.2.2:8000/api`; perangkat fisik membutuhkan alamat host yang dapat
+dijangkau perangkat.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Skenario demonstrasi
 
-### Premium Partners
+1. Login admin untuk melihat tren dari data sintetis enam hari sebelumnya.
+2. Login akun staff melalui API/mobile. Ambil titik demo dari `GET /api/office`.
+3. Kirim check in di titik demo pada lingkungan pengujian. Dashboard menampilkan catatan baru setelah dimuat ulang.
+4. Ulangi check in: API mengembalikan `409` dan mempertahankan waktu masuk pertama.
+5. Coba check out di luar radius: ditolak `403`. Check out di dalam radius berhasil.
+6. Tampilkan riwayat dan ringkasan bulanan; logout lalu pastikan token lama ditolak.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Koordinat demo adalah data sintetis. Ini bukan bukti lokasi kantor sebenarnya.
+Hari ini sengaja tidak diisi seeder agar alur masuk/pulang dapat diperagakan langsung.
 
-## Contributing
+## Pengujian
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```sh
+php artisan test
+php artisan view:cache
+npm run build
+```
 
-## Code of Conduct
+Workflow `.github/workflows/tests.yml` menjalankan instalasi dari lockfile, build aset,
+pemeriksaan sintaks PHP, kompilasi Blade, serta unit/feature tests pada pull request.
+Lihat hasil aktual pada tab Actions; keberadaan workflow bukan jaminan tes sudah lulus.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Tes mencakup autentikasi, penolakan akses admin, koordinat invalid, radius, absensi
+berulang, batas tanggal Jakarta, unique index, isolasi data pengguna, ringkasan,
+pagination, dashboard kosong, validasi kantor, dan seeder berulang.
+Pengujian paralel terhadap MySQL/InnoDB tetap diperlukan sebelum pemakaian produksi;
+tes SQLite tidak membuktikan perilaku row lock MySQL.
 
-## Security Vulnerabilities
+## Arsitektur singkat
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Komponen | Tanggung jawab |
+| --- | --- |
+| AttendanceLocationRequest | Otorisasi karyawan terdaftar dan validasi koordinat |
+| AttendanceService | Transaksi, urutan masuk/pulang, waktu server, radius |
+| Geofence | Perhitungan jarak Haversine dalam meter |
+| AttendanceApiController | Kontrak respons mobile, riwayat dan ringkasan |
+| AuthController | Penerbitan serta pencabutan token mobile |
+| DashboardController | Agregasi data untuk dashboard admin |
 
-## License
+Tanggal dan jam absensi mengikuti server. `user_id`, `date`, dan jam yang dikirim
+klien tidak dipakai untuk mencatat absensi. Koordinat masih berasal dari klien;
+validasi radius **tidak** menjamin pencegahan GPS palsu.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Dokumentasi lanjutan
+
+- [Kontrak API dan integrasi Flutter](docs/API.md)
+- [Audit, migrasi, dan pengembangan berikutnya](docs/PORTFOLIO.md)
+
+Versi ini masih menggunakan satu lokasi kantor dan satu sesi absensi per hari.
+Shift lintas tengah malam, cuti/izin, lembur, payroll, audit trail, serta GPS attestation
+belum diimplementasikan. Menit tercatat adalah selisih masuk–pulang dari catatan lengkap,
+bukan jam kerja bersih atau dasar penggajian.
+
+Folder sumber Flutter tidak ada di repo ini. ZIP mobile belum dibandingkan dengan
+backend pada perubahan ini; jangan menganggap kesamaan isi atau kompatibilitas UI
+sudah terverifikasi.

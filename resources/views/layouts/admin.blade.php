@@ -78,28 +78,40 @@
             background: #b91c1c;
             color: white;
         }
+
+        .sidebar { overflow-y: auto; height: 100vh; }
+        a:focus-visible, button:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+        @media (max-width: 991.98px) {
+            .sidebar { position: static; width: 100%; min-height: 0; height: auto; }
+            .sidebar-logo { padding: 12px; }
+            .sidebar-logo img { max-width: 120px; }
+            .sidebar a { display: inline-block; padding: 12px 16px; }
+            .sidebar form { margin-top: 8px !important; padding-bottom: 16px; }
+            .content { margin-left: 0; padding: 16px; }
+            .topbar { padding: 16px; gap: 12px; flex-wrap: wrap; }
+        }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
+<nav class="sidebar" aria-label="Navigasi admin">
     <div class="sidebar-logo">
         <img src="{{ asset('images/logo-chips.png') }}" alt="Chips Bodywork">
     </div>
 
-    <a href="{{ route('admin.dashboard') }}">
+    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif>
         <i class="bi bi-speedometer2 me-2"></i> Dashboard
     </a>
 
-    <a href="{{ route('employees.index') }}">
+    <a href="{{ route('employees.index') }}" class="{{ request()->routeIs('employees.*') ? 'active' : '' }}" @if(request()->routeIs('employees.*')) aria-current="page" @endif>
         <i class="bi bi-people me-2"></i> Data Karyawan
     </a>
 
-    <a href="{{ route('attendances.index') }}">
+    <a href="{{ route('attendances.index') }}" class="{{ request()->routeIs('attendances.*') ? 'active' : '' }}" @if(request()->routeIs('attendances.*')) aria-current="page" @endif>
         <i class="bi bi-calendar-check me-2"></i> Rekap Absensi
     </a>
 
-    <a href="{{ route('office.index') }}">
+    <a href="{{ route('office.index') }}" class="{{ request()->routeIs('office.*') ? 'active' : '' }}" @if(request()->routeIs('office.*')) aria-current="page" @endif>
         <i class="bi bi-geo-alt me-2"></i> Lokasi Kantor
     </a>
 
@@ -109,9 +121,9 @@
             <i class="bi bi-box-arrow-right me-2"></i> Logout
         </button>
     </form>
-</div>
+</nav>
 
-<div class="content">
+<main class="content">
     <div class="topbar d-flex justify-content-between align-items-center">
         <div>
             <h4 class="mb-0 fw-bold">Chips Bodywork</h4>
@@ -125,7 +137,7 @@
     </div>
 
     @yield('content')
-</div>
+</main>
 
 </body>
 </html>

@@ -3,132 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\AttendanceLocationRequest;
 use App\Models\Attendance;
 use App\Models\OfficeLocation;
+use App\Services\AttendanceService;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
 
 class AttendanceApiController extends Controller
 {
-    public function checkIn(Request $request)
+    public function checkIn(AttendanceLocationRequest $request, AttendanceService $service)
     {
-        $request->validate([
-            'latitude' => 'required',
-            'longitude' => 'required',
-        ]);
-
-        $user = auth()->user();
-
-        $alreadyCheckIn = Attendance::where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
-            ->first();
-
-        if ($alreadyCheckIn) {
-            return response()->json([
-                'message' => 'Anda sudah melakukan check in hari ini',
-                'attendance' => $alreadyCheckIn,
-            ], 409);
-        }
-
-        $office = OfficeLocation::first();
-
-        if (!$office) {
-            return response()->json([
-                'message' => 'Lokasi kantor belum diatur',
-            ], 404);
-        }
-
-        $distance = $this->calculateDistance(
-            $office->latitude,
-            $office->longitude,
-            $request->latitude,
-            $request->longitude
-        );
-
-        if ($distance > $office->radius) {
-            return response()->json([
-                'message' => 'Anda berada di luar radius kantor',
-                'distance' => round($distance),
-            ], 403);
-        }
-
-        $attendance = Attendance::create([
-            'user_id' => $user->id,
-            'date' => now()->toDateString(),
-            'check_in_time' => now()->format('H:i:s'),
-            'check_in_latitude' => $request->latitude,
-            'check_in_longitude' => $request->longitude,
-            'distance' => round($distance),
-            'status' => 'hadir',
-        ]);
-
         return response()->json([
             'message' => 'Check in berhasil',
-            'attendance' => $attendance,
+            'attendance' => $service->record($request->user(), $request->validated(), false),
         ], 201);
     }
 
-    public function checkOut(Request $request)
+    public function checkOut(AttendanceLocationRequest $request, AttendanceService $service)
     {
-        $request->validate([
-            'latitude' => 'required',
-            'longitude' => 'required',
-        ]);
-
-        $user = auth()->user();
-
-        $attendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
-            ->first();
-
-        if (!$attendance) {
-            return response()->json([
-                'message' => 'Anda belum melakukan check in hari ini',
-            ], 404);
-        }
-
-        if ($attendance->check_out_time !== null) {
-            return response()->json([
-                'message' => 'Anda sudah melakukan absen pulang hari ini',
-            ], 409);
-        }
-
-        $office = OfficeLocation::first();
-
-        if (!$office) {
-            return response()->json([
-                'message' => 'Lokasi kantor belum diatur',
-            ], 404);
-        }
-
-        $distance = $this->calculateDistance(
-            $office->latitude,
-            $office->longitude,
-            $request->latitude,
-            $request->longitude
-        );
-
-        if ($distance > $office->radius) {
-            return response()->json([
-                'message' => 'Anda berada di luar radius kantor',
-                'distance' => round($distance),
-            ], 403);
-        }
-
-        $attendance->update([
-            'check_out_time' => now()->format('H:i:s'),
-            'check_out_latitude' => $request->latitude,
-            'check_out_longitude' => $request->longitude,
-        ]);
-
         return response()->json([
             'message' => 'Absen pulang berhasil',
-            'attendance' => $attendance,
-        ], 200);
+            'attendance' => $service->record($request->user(), $request->validated(), true),
+        ]);
     }
 
-    public function profile()
+    public function profile(Request $request)
     {
-        $user = auth()->user()->load('employee');
+        $user = $request->user()->load('employee');
 
         return response()->json([
             'message' => 'Profil berhasil diambil',
@@ -142,33 +44,101 @@ class AttendanceApiController extends Controller
         ]);
     }
 
-    public function history()
+    public function history(Request $request)
     {
-        $attendances = Attendance::where('user_id', auth()->id())
-            ->orderBy('date', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $data = $request->validate([
+            'month' => ['sometimes', 'date_format:Y-m'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'between:1,100'],
+        ]);
+
+        $query = Attendance::where('user_id', $request->user()->id)
+            ->orderByDesc('date')->orderByDesc('id');
+
+        if (isset($data['month'])) {
+            $month = CarbonImmutable::createFromFormat('!Y-m', $data['month']);
+            $query->whereBetween('date', [$month->toDateString(), $month->endOfMonth()->toDateString()]);
+        }
+
+        // Keep the original list response for existing mobile clients.
+        if (!$request->hasAny(['page', 'per_page'])) {
+            return response()->json([
+                'message' => 'Riwayat absensi berhasil diambil',
+                'attendances' => $query->get(),
+            ]);
+        }
+
+        $page = $query->paginate($data['per_page'] ?? 20);
 
         return response()->json([
             'message' => 'Riwayat absensi berhasil diambil',
-            'attendances' => $attendances,
+            'attendances' => $page->items(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
         ]);
     }
 
-    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    public function today(Request $request)
     {
-        $earthRadius = 6371000;
+        $now = now();
+        $attendance = Attendance::where('user_id', $request->user()->id)
+            ->where('date', $now->toDateString())->first();
 
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
+        return response()->json([
+            'message' => 'Status absensi hari ini berhasil diambil',
+            'date' => $now->toDateString(),
+            'timezone' => config('app.timezone'),
+            'server_time' => $now->toIso8601String(),
+            'state' => !$attendance ? 'not_checked_in'
+                : ($attendance->check_out_time ? 'checked_out' : 'checked_in'),
+            'attendance' => $attendance,
+        ]);
+    }
 
-        $a =
-            sin($dLat / 2) * sin($dLat / 2) +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-            sin($dLon / 2) * sin($dLon / 2);
+    public function summary(Request $request)
+    {
+        $data = $request->validate(['month' => ['sometimes', 'date_format:Y-m']]);
+        $month = CarbonImmutable::createFromFormat('!Y-m', $data['month'] ?? now()->format('Y-m'));
+        $records = Attendance::where('user_id', $request->user()->id)
+            ->whereBetween('date', [$month->toDateString(), $month->endOfMonth()->toDateString()])
+            ->whereNotNull('check_in_time')->get();
+        $complete = $records->filter(fn ($row) => $row->check_out_time !== null);
+        $minutes = $complete->sum(function ($row) {
+            $start = CarbonImmutable::parse($row->date.' '.$row->check_in_time);
+            $end = CarbonImmutable::parse($row->date.' '.$row->check_out_time);
 
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+            return max(0, (int) $start->diffInMinutes($end, false));
+        });
 
-        return $earthRadius * $c;
+        return response()->json([
+            'message' => 'Ringkasan absensi berhasil diambil',
+            'month' => $month->format('Y-m'),
+            'timezone' => config('app.timezone'),
+            'summary' => [
+                'present_days' => $records->count(),
+                'completed_days' => $complete->count(),
+                'incomplete_days' => $records->count() - $complete->count(),
+                'recorded_minutes' => $minutes,
+            ],
+        ]);
+    }
+
+    public function office()
+    {
+        $office = OfficeLocation::query()->orderBy('id')->firstOrFail();
+
+        return response()->json([
+            'message' => 'Lokasi kantor berhasil diambil',
+            'office' => [
+                'office_name' => $office->office_name,
+                'latitude' => (float) $office->latitude,
+                'longitude' => (float) $office->longitude,
+                'radius' => (int) $office->radius,
+            ],
+        ]);
     }
 }
