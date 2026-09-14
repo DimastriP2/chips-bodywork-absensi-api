@@ -111,7 +111,9 @@ Batas login: 5 request/menit per pasangan email+IP, 30 per IP.
 API terautentikasi: 120 request/menit per pengguna; ganti password tambahan 5/menit.
 Konfigurasi trusted proxy harus sesuai lingkungan hosting agar IP limiter benar.
 
-## Checklist integrasi Flutter yang belum dikerjakan
+## Integrasi Flutter
+
+Implementasi tersedia pada [draft PR mobile #1](https://github.com/DimastriP2/chips-bodywork-absensi-app/pull/1):
 
 - Simpan token pada secure storage, tangani 401 dan logout server.
 - Ambil `/office` untuk peta/radius, serta `/attendance/today` saat beranda dibuka.
@@ -119,6 +121,6 @@ Konfigurasi trusted proxy harus sesuai lingkungan hosting agar IP limiter benar.
 - Tampilkan izin GPS ditolak, layanan lokasi mati, timeout, serta respons validasi.
 - Gunakan pagination dan filter bulan; jangan hanya menyaring data di perangkat.
 - Tampilkan ringkasan dengan label “durasi tercatat”, bukan total gaji/lembur.
-- Uji terhadap backend ini dengan sumber Flutter sebenarnya.
 
-Daftar ini adalah pekerjaan integrasi berikutnya, bukan fitur Flutter yang sudah selesai.
+Pengujian end-to-end pada perangkat dengan backend berjalan masih diperlukan.
+Tes mobile memakai respons API simulasi; kecocokan dengan ZIP unggahan belum diverifikasi.

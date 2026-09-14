@@ -99,6 +99,8 @@ Shift lintas tengah malam, cuti/izin, lembur, payroll, audit trail, serta GPS at
 belum diimplementasikan. Menit tercatat adalah selisih masuk–pulang dari catatan lengkap,
 bukan jam kerja bersih atau dasar penggajian.
 
-Folder sumber Flutter tidak ada di repo ini. ZIP mobile belum dibandingkan dengan
-backend pada perubahan ini; jangan menganggap kesamaan isi atau kompatibilitas UI
-sudah terverifikasi.
+Sumber mobile berada di [chips-bodywork-absensi-app](https://github.com/DimastriP2/chips-bodywork-absensi-app).
+[Draft PR mobile #1](https://github.com/DimastriP2/chips-bodywork-absensi-app/pull/1)
+mengintegrasikan endpoint baru. Jalankan kedua branch bersama untuk pengujian.
+ZIP unggahan belum dibandingkan byte-per-byte; pengujian end-to-end di perangkat
+belum dilakukan.

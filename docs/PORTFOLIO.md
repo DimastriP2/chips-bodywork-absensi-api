@@ -42,7 +42,8 @@ sebelum menyebut perilaku concurrency sudah terverifikasi di produksi.
 ## Batasan yang masih terbuka
 
 - ZIP Flutter belum dapat diekstrak pada sesi ini. Persentase kesamaan dengan repo
-  belum diketahui; repo berisi Laravel, bukan sumber mobile.
+  belum diketahui. Repo Flutter terpisah ditemukan dan ditingkatkan melalui
+  [PR mobile #1](https://github.com/DimastriP2/chips-bodywork-absensi-app/pull/1).
 - Belum ada pengujian perangkat Android/iOS atau screenshot hasil render dashboard.
 - Satu kantor, satu absensi per tanggal, tanpa shift malam dan mekanisme koreksi absensi.
 - Koordinat dari perangkat dapat dipalsukan; Haversine hanya menghitung jarak.
@@ -59,7 +60,8 @@ sebelum menyebut perilaku concurrency sudah terverifikasi di produksi.
 
 ## Urutan pengembangan lanjutan
 
-1. **Integrasi mobile:** secure storage, state status server, pagination, error dan retry UX.
+1. **Validasi integrasi mobile:** perubahan secure storage, status server, pagination,
+   dan error UX tersedia di PR mobile; jalankan kedua branch bersama pada perangkat.
 2. **Siklus hidup karyawan:** nonaktifkan akun, cabut akses, pertahankan arsip, transaksi CRUD.
 3. **Jadwal kerja:** shift, toleransi keterlambatan, hari libur, lintas tengah malam.
 4. **Izin/cuti:** pengajuan, approval admin, bukti pendukung, histori keputusan.
