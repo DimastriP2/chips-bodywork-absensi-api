@@ -17,6 +17,7 @@ test('demo seeding is repeatable without changing passwords or duplicating atten
 
 test('demo seeding is disabled in production', function () {
     $this->app->instance('env', 'production');
-    $this->expectException(RuntimeException::class);
-    $this->seed(DemoSeeder::class);
+    expect(fn () => app(DemoSeeder::class)->run())->toThrow(RuntimeException::class);
+    $this->assertDatabaseCount('users', 0);
+    $this->assertDatabaseCount('attendances', 0);
 });
